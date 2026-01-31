@@ -9,19 +9,12 @@ d = u2.connect()
 def smooth_scroll(device):
     # 開始点、制御点1、制御点2、終了点 (ベジェ曲線用)
     # 座標は自分の端末の解像度に合わせて調整してください
-    r =random.uniform(0, 5)
-    r2 =random.uniform(0, 5)
-    r3 =random.uniform(0, 5)
-    r4 =random.uniform(0, 5)
-    r5 =random.uniform(0, 5)
-    r6 =random.uniform(0, 5)
-    r7 =random.uniform(0, 5)
-    r8 =random.uniform(0, 5)
 
-    p0 = [400 + r, 1200 + r2]  # スタート
-    p1 = [500 + r3, 1000 + r4]  # 膨らみ1
-    p2 = [475 + r5, 500 + r6]   # 膨らみ2
-    p3 = [400 + r7, 300 + r8]   # ゴール
+    p0 = [400 + random.uniform(-5, 5), 1200 + random.uniform(-5, 5)]  # スタート
+    p1 = [300 + random.uniform(-5, 5), 1000 + random.uniform(-5, 5)]  # 膨らみ1
+    p2 = [375 + random.uniform(-5, 5), 500 + random.uniform(-5, 5)]   # 膨らみ2
+    p3 = [350 + random.uniform(-5, 5), 400 + random.uniform(-5, 5)]   # 膨らみ3
+    p4 = [400 + random.uniform(-5, 5), 300 + random.uniform(-5, 5)]   # ゴール
 
     # ベジェ曲線の座標群を生成 (30段階で細かく計算)
     points = []

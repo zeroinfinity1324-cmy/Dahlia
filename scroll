@@ -33,7 +33,7 @@ def smooth_scroll(device):
     # 各点を順番になぞる（指は置いたまま）
     for p in points[1:]:
         device.touch.move(p[0], p[1])
-        r = random.uniform(0.005, 0.02) #randomで微妙に変化をつける
+        r = random.uniform(0.005, 0.015) #randomで微妙に変化をつける
         time.sleep(r)  # ここで「人間らしい速さ」を調整
         
     # 最後に指を離す

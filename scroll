@@ -1,6 +1,7 @@
 import uiautomator2 as u2
 import time
 import numpy as np
+import random
 
 # 1. デバイスに接続（シリアル番号は 'adb devices' で確認できるもの）
 d = u2.connect() 
@@ -8,10 +9,19 @@ d = u2.connect()
 def smooth_scroll(device):
     # 開始点、制御点1、制御点2、終了点 (ベジェ曲線用)
     # 座標は自分の端末の解像度に合わせて調整してください
-    p0 = [500, 1500]  # スタート
-    p1 = [800, 1000]  # 膨らみ1
-    p2 = [200, 500]   # 膨らみ2
-    p3 = [500, 200]   # ゴール
+    r =random.uniform(0, 5)
+    r2 =random.uniform(0, 5)
+    r3 =random.uniform(0, 5)
+    r4 =random.uniform(0, 5)
+    r5 =random.uniform(0, 5)
+    r6 =random.uniform(0, 5)
+    r7 =random.uniform(0, 5)
+    r8 =random.uniform(0, 5)
+
+    p0 = [400 + r, 1200 + r2]  # スタート
+    p1 = [500 + r3, 1000 + r4]  # 膨らみ1
+    p2 = [475 + r5, 500 + r6]   # 膨らみ2
+    p3 = [400 + r7, 300 + r8]   # ゴール
 
     # ベジェ曲線の座標群を生成 (30段階で細かく計算)
     points = []
@@ -30,7 +40,8 @@ def smooth_scroll(device):
     # 各点を順番になぞる（指は置いたまま）
     for p in points[1:]:
         device.touch.move(p[0], p[1])
-        time.sleep(0.01)  # ここで「人間らしい速さ」を調整
+        r = random.uniform(0.005, 0.02) #randomで微妙に変化をつける
+        time.sleep(r)  # ここで「人間らしい速さ」を調整
         
     # 最後に指を離す
     device.touch.up(points[-1][0], points[-1][1])

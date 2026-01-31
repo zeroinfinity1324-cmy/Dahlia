@@ -1,0 +1,33 @@
+import cv2
+import subprocess
+
+screen = cv2.imread("screen.png")
+button = cv2.imread("button.png")
+
+screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+button_gray = cv2.cvtColor(button, cv2.COLOR_BGR2GRAY)
+
+result = cv2.matchTemplate(screen_gray, button_gray, cv2.TM_CCOEFF_NORMED)
+min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+print("max_val:", max_val)
+print("max_loc:", max_loc)
+
+threshold = 0.8
+
+if max_val < threshold:
+    print("ボタンが見つかりませんでした")
+    exit()
+
+x, y = max_loc
+h, w = button_gray.shape[:2]
+tap_x = x + w // 2
+tap_y = y + h // 2
+
+print("tap:", tap_x, tap_y)
+
+# ★ Python からは .\adb を使う
+cmd = f".\\adb shell input tap {tap_x} {tap_y}"
+subprocess.run(cmd, shell=True)
+
+subprocess.run(".\\adb shell rm /sdcard/screen.png", shell=True)

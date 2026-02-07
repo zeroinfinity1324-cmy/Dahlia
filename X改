@@ -188,9 +188,9 @@ def perform_actions(device, url):
             for _ in range(5):  # 最大5回探す
                 smooth_scroll(device, 1300, 1000, 700, 275)
                 time.sleep(1 + random.uniform(0, 0.5))
-                take_screenshot()
+                screenshot_path = take_screenshot(device)  # ← 修正: deviceを渡す
 
-                max_val, max_loc, (h, w) = find_button("screen.png", "button.png")
+                max_val, max_loc, (h, w) = find_button(screenshot_path, "button.png")  # ← 修正: 戻り値を使う
 
                 if max_val >= 0.8:
                     found = True
@@ -216,8 +216,11 @@ def perform_actions(device, url):
                 time.sleep(1 + random.uniform(0, 0.5))
                 tap(device, 360, 1040)
 
-
-            os.remove("screen.png")
+                os.remove(screenshot_path)  # ← 修正: 正しいパスを削除
+            else:
+                # ボタンが見つからなかった場合もスクリーンショットを削除
+                if 'screenshot_path' in locals():
+                    os.remove(screenshot_path)
 
             tap(device, 567, 1557)
             smooth_scroll(device, 1290, 1100, 800, 530)
@@ -274,9 +277,9 @@ def perform_actions(device, url):
             for _ in range(5):  # 最大5回探す
                 smooth_scroll(device, 1300, 1000, 700, 275)
                 time.sleep(1 + random.uniform(0, 0.5))
-                take_screenshot()
+                screenshot_path = take_screenshot(device)  # ← 修正: deviceを渡す
 
-                max_val, max_loc, (h, w) = find_button("screen.png", "button.png")
+                max_val, max_loc, (h, w) = find_button(screenshot_path, "button.png")  # ← 修正: 戻り値を使う
 
                 if max_val >= 0.8:
                     found = True
@@ -302,7 +305,11 @@ def perform_actions(device, url):
                 time.sleep(1 + random.uniform(0, 0.5))
                 tap(device, 360, 1040)
             
-            os.remove("screen.png")
+                os.remove(screenshot_path)  # ← 修正: 正しいパスを削除
+            else:
+                # ボタンが見つからなかった場合もスクリーンショットを削除
+                if 'screenshot_path' in locals():
+                    os.remove(screenshot_path)
 
             tap(device, 567, 1557)
             smooth_scroll(device, 1290, 1100, 800, 530)

@@ -1,0 +1,414 @@
+import subprocess
+import time
+import random
+import concurrent.futures
+import uiautomator2 as u2
+import numpy as np
+import cv2
+import os
+
+
+# -----------------------------
+# ADB のパス1
+# -----------------------------
+ADB_PATH = r"C:\Users\zeroi\Downloads\platform-tools-latest-windows\platform-tools\adb.exe"
+
+
+# -----------------------------
+# スクリーンショット取得（ADB）
+# -----------------------------
+def take_screenshot(device):
+    remote_path = f"/sdcard/screen_{device}.png"
+    local_path = f"screen_{device}.png"
+
+    adb_command(device, ["shell", "screencap", "-p", remote_path])
+    adb_command(device, ["pull", remote_path, local_path])
+    adb_command(device, ["shell", "rm", remote_path])
+
+    return local_path
+
+
+# -----------------------------
+# ボタン検出（OpenCV）
+# -----------------------------    
+def find_button(screen_path, button_path, threshold=0.8): 
+    screen = cv2.imread(screen_path) 
+    button = cv2.imread(button_path) 
+    screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY) 
+    button_gray = cv2.cvtColor(button, cv2.COLOR_BGR2GRAY) 
+    result = cv2.matchTemplate(screen_gray, button_gray, cv2.TM_CCOEFF_NORMED) 
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result) 
+    return max_val, max_loc, button_gray.shape[:2]
+
+
+# -----------------------------
+# 端末一覧取得（ADB）
+# -----------------------------
+def get_connected_devices():
+    result = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True)
+    lines = result.stdout.strip().split("\n")[1:]
+    return [line.split("\t")[0] for line in lines if "device" in line]
+
+
+# -----------------------------
+# ADB コマンド実行
+# -----------------------------
+def adb_command(device, cmd):
+    subprocess.run([ADB_PATH, "-s", device] + cmd)
+
+
+# -----------------------------
+# タップ（ADB）
+# -----------------------------
+def tap(device, x, y, wait=True):
+    adb_command(device, ["shell", "input", "tap", str(x + random.randint(-5, 5)), str(y + random.randint(-5, 5))])
+    if wait:
+        time.sleep(random.uniform(1, 2))
+
+
+def tap2(device, x, y, times=4, interval=1.5):
+    for _ in range(times):
+        adb_command(device, ["shell", "input", "tap", str(x + random.randint(-3, 3)), str(y + random.randint(-3, 3))])
+        time.sleep(interval)
+
+
+
+# -----------------------------
+# ベジェ曲線スワイプ（uiautomator2）
+# -----------------------------
+def smooth_scroll(device_serial, p, q, r, s):
+    d = u2.connect(device_serial)
+
+    p0 = [350 + random.uniform(-5, 5), p + random.uniform(-5, 5)]
+    p1 = [320 + random.uniform(-5, 5), q + random.uniform(-5, 5)]
+    p2 = [340 + random.uniform(-5, 5), r + random.uniform(-5, 5)]
+    p3 = [360 + random.uniform(-5, 5), s + random.uniform(-5, 5)]
+
+    points = []
+    for t in np.linspace(0, 1, 30):
+        x = (1-t)**3 * p0[0] + 3*(1-t)**2 * t * p1[0] + 3*(1-t) * t**2 * p2[0] + t**3 * p3[0]
+        y = (1-t)**3 * p0[1] + 3*(1-t)**2 * t * p1[1] + 3*(1-t) * t**2 * p2[1] + t**3 * p3[1]
+        points.append((int(x), int(y)))
+
+    d.touch.down(points[0][0], points[0][1])
+    for p in points[1:]:
+        d.touch.move(p[0], p[1])
+        time.sleep(random.uniform(0.005, 0.015))
+    d.touch.up(points[-1][0], points[-1][1])
+
+
+# -----------------------------
+# 機内モード（ADB）
+# -----------------------------
+def toggle_airplane_mode(device, enable=True):
+    state = "1" if enable else "0"
+    adb_command(device, ["shell", "settings", "put", "global", "airplane_mode_on", state])
+    adb_command(device, ["shell", "am", "broadcast", "-a", "android.intent.action.AIRPLANE_MODE", "--ez", "state", state])
+    time.sleep(3)
+
+
+# -----------------------------
+# 戻る（ADB）
+# -----------------------------
+def go_back(device):
+    tap(device, 560, 1560, wait=False)
+    time.sleep(1.5)
+    tap(device, 560, 1560, wait=False)
+    time.sleep(1.5)
+
+
+# -----------------------------
+# ページ更新（ADB）
+# -----------------------------
+def refresh_page(device):
+    tap(device, 664, 135, wait=False)
+    time.sleep(1 + random.uniform(0, 0.5))
+    tap(device, 664, 135, wait=False)
+    time.sleep(1 + random.uniform(0, 0.5))
+
+
+# -----------------------------
+# メイン動作
+# -----------------------------
+def perform_actions(device, url):
+
+    time.sleep(random.uniform(1, 3))
+    tap(device, 50, 1460)
+    tap(device, 280, 960)
+
+    smooth_scroll(device, 1320, 1000, 700, 350)
+    time.sleep(1 + random.uniform(0, 0.5))
+    #scroll_down1(device, 1200, 650)
+
+    srp = random.randint(20, 30)
+    for _ in range(srp):
+        x = random.random()
+        if x <= 0.5:
+            tap(device, 190, 600)
+            tap2(device, 625, 680)
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))    
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down2(device)
+
+            smooth_scroll(device, 300, 700, 1000, 1300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_up(device, 1)
+
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down1(device, 1000, 400)
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_up(device, 1)
+            tap(device, 50, 1460)
+            
+            tap(device, 430, 1460)
+            time.sleep(1 + random.uniform(0, 0.5))
+            tap(device, 567, 1557)
+            tap(device, 567, 1557)
+            time.sleep(2)
+            tap(device, 560, 1460)
+            time.sleep(2)
+            
+            
+            
+            smooth_scroll(device, 1200, 1000, 700, 175)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 275)
+            time.sleep(1 + random.uniform(0, 0.5))
+
+            found = False
+
+            for _ in range(5):  # 最大5回探す
+                smooth_scroll(device, 1300, 1000, 700, 275)
+                time.sleep(1 + random.uniform(0, 0.5))
+                take_screenshot()
+
+                max_val, max_loc, (h, w) = find_button("screen.png", "button.png")
+
+                if max_val >= 0.8:
+                    found = True
+                    break
+                
+            if found:
+                x, y = max_loc
+                tap_x = x + w // 2
+                tap_y = y + h // 2
+                
+                tap(device, tap_x, tap_y)
+                time.sleep(3 + random.uniform(0, 0.5))
+
+                #ネット予約
+                tap(device, 120, 1080)
+                smooth_scroll(device, 1320, 1000, 700, 550)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 206, 693)
+                smooth_scroll(device, 1320, 1000, 700, 400)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 230, 1195)
+                smooth_scroll(device, 1320, 1000, 700, 500)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 360, 1040)
+
+
+            os.remove("screen.png")
+
+            tap(device, 567, 1557)
+            smooth_scroll(device, 1290, 1100, 800, 530)
+            time.sleep(1 + random.uniform(0, 0.5)) 
+
+
+
+            #tap(device, 666, 1460) #閉じる
+            #smooth_scroll(device, 1290, 1100, 800, 530) #一段ずらし
+            #time.sleep(1 + random.uniform(0, 0.5))           
+
+        else:
+            tap(device, 530, 600)
+            tap2(device, 625, 680)
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))    
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down2(device)
+
+            smooth_scroll(device, 300, 700, 1000, 1300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_up(device, 1)
+
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down1(device, 1000, 400)
+            smooth_scroll(device, 1300, 1000, 700, 300)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_up(device, 1)
+            tap(device, 50, 1460)
+            
+            tap(device, 430, 1460)
+            time.sleep(1 + random.uniform(0, 0.5))
+            tap(device, 567, 1557)
+            tap(device, 567, 1557)
+            time.sleep(2)
+            tap(device, 560, 1460)
+            time.sleep(2)
+            
+            
+            
+            smooth_scroll(device, 1200, 1000, 700, 175)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1300, 1000, 700, 275)
+            time.sleep(1 + random.uniform(0, 0.5))
+            
+            found = False
+
+            for _ in range(5):  # 最大5回探す
+                smooth_scroll(device, 1300, 1000, 700, 275)
+                time.sleep(1 + random.uniform(0, 0.5))
+                take_screenshot()
+
+                max_val, max_loc, (h, w) = find_button("screen.png", "button.png")
+
+                if max_val >= 0.8:
+                    found = True
+                    break
+                
+            if found:
+                x, y = max_loc
+                tap_x = x + w // 2
+                tap_y = y + h // 2
+                
+                tap(device, tap_x, tap_y)
+                time.sleep(3 + random.uniform(0, 0.5))
+
+                #ネット予約
+                tap(device, 120, 1080)
+                smooth_scroll(device, 1320, 1000, 700, 550)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 206, 693)
+                smooth_scroll(device, 1320, 1000, 700, 400)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 230, 1195)
+                smooth_scroll(device, 1320, 1000, 700, 500)
+                time.sleep(1 + random.uniform(0, 0.5))
+                tap(device, 360, 1040)
+            
+            os.remove("screen.png")
+
+            tap(device, 567, 1557)
+            smooth_scroll(device, 1290, 1100, 800, 530)
+            time.sleep(1 + random.uniform(0, 0.5)) 
+            
+            
+            #tap(device, 666, 1460) #閉じる
+            #smooth_scroll(device, 1290, 1100, 800, 530) #一段ずらし
+            #time.sleep(1 + random.uniform(0, 0.5))      
+
+    tap(device, 275, 290) #セラピスト動画
+    time.sleep(2) 
+    tap(device, 375, 1350)
+    time.sleep(6)
+    tap(device, 375, 1300)
+    smooth_scroll(device, 1330, 1000, 700, 410)
+    time.sleep(1 + random.uniform(0, 0.5))
+    smooth_scroll(device, 1200, 1000, 800, 610)
+    time.sleep(1 + random.uniform(0, 0.5))
+    #scroll_down1(device, 1000, 450)
+    #scroll_down1(device, 1000, 600)
+
+    for _ in range(4):
+        aaa = random.random()
+        if aaa <= 0.5:
+            tap(device, 365, 560)
+            time.sleep(6)
+            tap(device, 650, 1275)
+            smooth_scroll(device, 1200, 1000, 800, 610)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1200, 1000, 800, 610)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down1(device, 1000, 590)
+            #scroll_down1(device, 1000, 590)
+        else:
+            tap(device, 365, 1145)
+            time.sleep(6)
+            tap(device, 650, 1275)
+            smooth_scroll(device, 1200, 1000, 800, 610)
+            time.sleep(1 + random.uniform(0, 0.5))
+            smooth_scroll(device, 1200, 1000, 800, 610)
+            time.sleep(1 + random.uniform(0, 0.5))
+            #scroll_down1(device, 1000, 590)
+            #scroll_down1(device, 1000, 590)
+
+    tap(device, 275, 215)
+    #tap(device, 620, 1155)
+    #scroll_down1(device, 1160, 450)
+
+    y = random.random()
+    if y <= 0.25:
+        tap(device, 190, 560)
+    elif y <= 0.5:
+        tap(device, 540, 560)
+    elif y <= 0.75:
+        tap(device, 190, 1170)
+    
+    else:
+        tap(device, 540, 1000)
+
+    tap(device, 430, 1460)
+    time.sleep(15)
+
+    toggle_airplane_mode(device, True)
+    time.sleep(10)
+    toggle_airplane_mode(device, False)
+    time.sleep(5)
+
+    go_back(device)
+    refresh_page(device)
+    #scroll_up(device, 2)
+    tap(device, 100, 955)
+
+    tap(device, 664, 135)
+    tap(device, 460, 615)
+    tap(device, 272, 453)
+    tap(device, 150, 550)
+    tap(device, 530, 1230)
+    time.sleep(4)
+    tap(device, 362, 1556)
+    tap(device, 362, 1556)
+    tap(device, 362, 1556)
+    time.sleep(1 + random.uniform(0, 0.5))
+    tap(device, 440, 1420)
+    tap(device, 664, 135)
+    tap(device, 460, 815)
+    tap(device, 360, 360)
+
+
+# -----------------------------
+# メインループ
+# -----------------------------
+def main():
+    url = "https://example.com"
+    devices = get_connected_devices()
+    print (f"接続端末： {devices}")
+
+    if not devices:
+        print("端末が見つかりません")
+        return
+
+    for _ in range(500):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(perform_actions, device, url) for device in devices]
+            concurrent.futures.wait(futures)
+
+
+if __name__ == "__main__":
+    main()

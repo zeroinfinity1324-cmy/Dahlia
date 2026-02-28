@@ -1,0 +1,111 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import csv
+import re
+import os
+from datetime import datetime
+
+# ChromeDriverのパス
+base_path = os.path.dirname(os.path.abspath(__file__))
+driver_path = os.path.join(base_path, "chromedriver.exe")
+service = Service(driver_path)
+
+
+options = Options()
+options.add_argument("--headless")  # バックグラウンドで実行
+options.add_argument("--disable-gpu")
+options.add_argument("--window-size=1920,1080")
+
+driver = webdriver.Chrome(service=service, options=options)
+
+# 番号と日本語説明＋URLの対応表
+url_map = {
+    1: ("渋谷・代々木・原宿エリア 総合エステランキング", "https://www.esthe-ranking.jp/shibuya/"),
+    2: ("渋谷・代々木・原宿エリア メンズエステ店ランキング", "https://www.esthe-ranking.jp/shibuya/ippan/"),
+    3: ("代々木駅周辺 総合エステランキング", "https://www.esthe-ranking.jp/shibuya/yoyogi-station/all/"),
+    4: ("代々木駅周辺 メンズエステ店ランキング", "https://www.esthe-ranking.jp/shibuya/yoyogi-station/ippan/"),
+    5: ("大垣・瑞穂エリア 総合エステランキング", "https://www.esthe-ranking.jp/ogaki/"),
+    6: ("大垣・瑞穂エリア メンズエステ店ランキング", "https://www.esthe-ranking.jp/ogaki/ippan"),
+    7: ("千葉エリア 総合エステランキング", "https://www.esthe-ranking.jp/chiba/"),
+    8: ("千葉エリア メンズエステ店ランキング", "https://www.esthe-ranking.jp/chiba/ippan/"),
+    9: ("千葉中央駅・葭川公園駅周辺 総合エステランキング", "https://www.esthe-ranking.jp/chiba/chibachuo-station/all/"),
+    10: ("千葉中央駅・葭川公園駅周辺 メンズエステ店ランキング", "https://www.esthe-ranking.jp/chiba/chibachuo-station/ippan/"),
+    11: ("六本木・麻布十番エリア 総合エステランキング", "https://www.esthe-ranking.jp/roppongi/"),
+    12: ("六本木・麻布十番エリア メンズエステ店ランキング", "https://www.esthe-ranking.jp/roppongi/ippan/"),
+    13: ("麻布十番駅周辺 総合エステランキング", "https://www.esthe-ranking.jp/roppongi/azabujuban-station/all/"),
+    14: ("麻布十番駅周辺 メンズエステ店ランキング", "https://www.esthe-ranking.jp/roppongi/azabujuban-station/ippan/")
+}
+
+print("番号を選ぶか、直接URLを入力してください:")
+for k, v in url_map.items():
+    print(f"{k}: {v[0]}")
+
+user_input = input("番号またはURLを入力してください: ").strip()
+
+# 入力が数字かURLかを判定
+target_url = ""
+desc = ""
+
+if user_input.isdigit():
+    choice = int(user_input)
+    target = url_map.get(choice)
+    if not target:
+        print("対応する番号がありません")
+        driver.quit()
+        exit()
+    desc, target_url = target
+    # ファイル名を日本語説明＋年月日＋時分にする
+    safe_desc = re.sub(r'[\\/:*?"<>|]', '_', desc)
+    now_str = datetime.now().strftime("%Y%m%d_%H%M")  # 年月日＋時分
+    csv_file = f"{safe_desc}_{now_str}.csv"
+else:
+    # URL入力の場合
+    target_url = user_input
+    desc = "ユーザー指定URL"
+    suffix = target_url.rstrip("/").split("/")[-1]
+    if not suffix:
+        suffix = "all"
+    now_str = datetime.now().strftime("%Y%m%d_%H%M")
+    csv_file = f"{suffix}_{now_str}.csv"
+
+print(f"\n=== {desc} を処理開始 ===")
+driver.get(target_url)
+
+# ページ存在チェック
+if "該当する店舗はありません" in driver.page_source or "404" in driver.title:
+    print(f"{desc} は存在しないページです")
+    driver.quit()
+    exit()
+
+try:
+    WebDriverWait(driver, 15).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.former__h3 h3 a b, h3 a b"))
+    )
+    items = driver.find_elements(By.CSS_SELECTOR, "div.former__h3 h3 a b")
+    if not items:
+        items = driver.find_elements(By.CSS_SELECTOR, "h3 a b")
+except Exception as e:
+    print(f"{desc} 要素取得失敗: {e}")
+    driver.quit()
+    exit()
+
+print(f"{desc} 取得件数: {len(items)}")
+
+ranking_data = []
+for i, item in enumerate(items[:30], start=1):
+    name = item.text.strip()
+    print(f"{i}位: {name}")
+    ranking_data.append([i, name])
+
+with open(csv_file, "w", newline="", encoding="cp932", errors="replace") as f:
+    writer = csv.writer(f)
+    writer.writerow(["順位", "店舗名"])
+    writer.writerows(ranking_data)
+
+print(f"ランキング情報を {csv_file} に保存しました！")
+
+driver.quit()
